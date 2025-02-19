@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>melo-chat</title>
+  <meta name="description" content="web上でチャットをすることができるサイトです。">
+  <link rel="icon" type="image/png" href="app/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="app/favicon.svg">
+  <link rel="shortcut icon" href="app/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="app/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-title" content="melo-chat">
+  <link rel="manifest" href="app/manifest.json">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
+  <style media="screen">
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      margin: 0;
+    }
+
+    #entries {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 10px;
+      background-color: #ffffff;
+      padding-top: 50px;
+    }
+
+    .message-box {
+      max-width: 60%;
+      padding: 10px;
+      margin-bottom: 50px;
+      border-radius: 8px;
+      color: black;
+      position: relative;
+    }
+
+    .message-box.self {
+      background-color: rgb(195, 246, 157);
+      color: black;
+      margin-left: auto;
+      text-align: right;
+    }
+
+    .message-box.other {
+      background-color: white;
+      color: black;
+      margin-right: auto;
+      text-align: left;
+    }
+
+    .message-box p {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .hero {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      background-color: #f5f5f5;
+      border-top: 1px solid #ddd;
+      padding: 10px;
+    }
+
+    .hero input {
+      width: calc(100% - 100px);
+      display: inline-block;
+      margin-right: 10px;
+    }
+
+    .abutton {
+      width: 80px;
+      display: inline-block;
+    }
+
+    .setting {
+      height: 40px;
+      top: 0px;
+      position: fixed;
+      z-index: 9998;
+    }
+
+    .slide-panel {
+      position: fixed;
+      top: 40px;
+      right: -80%;
+      width: 80%;
+      height: 40%;
+      background-color: #ffffff;
+      transition: right 0.5s ease-in-out;
+      z-index: 9999;
+    }
+
+    @media (min-width: 1024px) {
+      .slide-panel {
+        right: -50%;
+        width: 50%;
+      }
+    }
+
+    .half-circle-button {
+      position: absolute;
+      top: 50%;
+      left: -75px;
+      transform: translateY(-50%) rotate(-90deg);
+      width: 100px;
+      height: 50px;
+      background-color: #CCF0FF;
+      border-radius: 50px 50px 0 0;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      z-index: 9999;
+    }
+
+    .half-circle-button span {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 24px;
+      color: white;
+      font-weight: bold;
+    }
+
+    .slide-panel.open {
+      right: 0;
+    }
+
+    .iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+  </style>
+</head>
+
+<body>
+  <section class="hero setting">
+    <div id="clock" class="subtitle is-6">読み込み中...</div>
+  </section>
+  <div class="slide-panel" id="slidePanel">
+    <button class="half-circle-button" id="toggleButton">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-caret-up-fill"
+        viewBox="0 0 16 16">
+        <path
+          d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z" />
+      </svg>
+    </button>
+    <iframe src="https://wbo.ophir.dev/boards/YLvGSq8XuHDxRj2-あおそそ" class="iframe"></iframe>
+  </div>
+  <div id="entries" class="content">読み込み中...</div>
+  <section class="hero">
+    <form id="postForm">
+      <input class="input" id="text" placeholder="メッセージを入力" enterkeyhint="done" 　required autocomplete="off">
+      <button class="button has-background-primary-light has-text-black abutton" type="submit">送信</button>
+    </form>
+  </section>
+  <script>
+    function updateClock() {
+      const accessDate = new Date();
+      const days = ["日", "月", "火", "水", "木", "金", "土"];
+      const year = accessDate.getFullYear();
+      const month = String(accessDate.getMonth() + 1).padStart(2, '0');
+      const date = String(accessDate.getDate()).padStart(2, '0');
+      const hours = String(accessDate.getHours()).padStart(2, '0');
+      const minutes = String(accessDate.getMinutes()).padStart(2, '0');
+      const seconds = String(accessDate.getSeconds()).padStart(2, '0');
+      const day = days[accessDate.getDay()];
+      const timeString = `${year}/${month}/${date} (${day})　${hours}:${minutes}:${seconds}　　v0.1.1`;
+      document.getElementById('clock').innerText = timeString;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    const slidePanel = document.getElementById('slidePanel');
+    const toggleButton = document.getElementById('toggleButton');
+    const rightArrowSVG = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-caret-up-fill" viewBox="0 0 16 16">
+      <path d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/>
+    </svg>
+    `;
+    const leftArrowSVG = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-caret-down-fill" viewBox="0 0 16 16">
+      <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
+    </svg>
+    `;
+    toggleButton.addEventListener('click', () => {
+      const isOpen = slidePanel.classList.contains('open');
+      slidePanel.classList.toggle('open');
+      toggleButton.innerHTML = isOpen ? rightArrowSVG : leftArrowSVG;
+    });
+  </script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue, get, remove } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-database.js";
+    const firebaseConfig = {
+      apiKey: "AIzaSyAwgbnBaZJV92tdyrq857sz3iC8NH9v5aQ",
+      authDomain: "chat-b7327.firebaseapp.com",
+      databaseURL: "https://chat-b7327-default-rtdb.firebaseio.com",
+      projectId: "chat-b7327",
+      storageBucket: "chat-b7327.firebasestorage.app",
+      messagingSenderId: "233267744717",
+      appId: "1:233267744717:web:efa321e08d3c8f3e937e84",
+      measurementId: "G-XN86MRY4ZZ"
+    };
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    const postForm = document.getElementById('postForm');
+    const entries = document.getElementById('entries');
+    const textInput = document.getElementById('text');
+    const submitButton = document.querySelector('.abutton');
+    const defaultUrl = "https://wbo.ophir.dev/boards/YLvGSq8XuHDxRj2-あおそそ";
+    let currentName = localStorage.getItem('username');
+    async function checkAndSetUser() {
+      if (!currentName) {
+        currentName = prompt("名前を入力してください:");
+        if (!currentName) {
+          alert("名前が必要です！");
+          location.reload();
+        } else {
+          const namesRef = ref(database, 'names');
+          const snapshot = await get(namesRef);
+          const data = snapshot.val();
+          const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+          const recentNames = Object.values(data || {}).filter(nameData => nameData.timestamp > oneWeekAgo);
+          if (recentNames.some(nameData => nameData.name === currentName)) {
+            alert("その名前はすでに使用されています。別の名前を使用してください。");
+            location.reload();
+          } else {
+            localStorage.setItem('username', currentName);
+            const timestamp = Date.now();
+            set(ref(database, 'names/' + timestamp), { name: currentName, timestamp: timestamp });
+          }
+        }
+      }
+      const namesRef = ref(database, 'names');
+      const snapshot = await get(namesRef);
+      const data = snapshot.val();
+      if (!data || !Object.values(data).some(nameData => nameData.name === currentName)) {
+        const timestamp = Date.now();
+        set(ref(database, 'names/' + timestamp), { name: currentName, timestamp: timestamp });
+      }
+    }
+    checkAndSetUser();
+    postForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = textInput.value.trim();
+      if (!text) {
+        alert("メッセージを入力してください。");
+        return;
+      }
+      const timestamp = Date.now();
+      await set(ref(database, 'messages/' + timestamp), { name: currentName, text: text, timestamp: timestamp });
+
+      textInput.value = '';
+      textInput.focus();
+    });
+    const messagesRef = ref(database, 'messages');
+    function fetchMessages() {
+      get(messagesRef).then(snapshot => {
+        if (!snapshot.exists()) return;
+        const data = snapshot.val();
+      }).catch(error => {
+        console.error("データの取得に失敗:", error);
+      });
+    }
+    setInterval(fetchMessages, 1000);
+    fetchMessages();
+    onValue(messagesRef, (snapshot) => {
+      if (!snapshot.exists()) return;
+      const data = snapshot.val();
+      displayEntries(data);
+    });
+    function displayEntries(data) {
+      if (!data) return;
+      entries.innerHTML = '';
+      const messages = Object.values(data).sort((a, b) => a.timestamp - b.timestamp);
+      messages.forEach(entry => addEntry(entry));
+      entries.scrollTop = entries.scrollHeight;
+    }
+    function addEntry(entry) {
+      const div = document.createElement('div');
+      div.className = `box message-box ${entry.name === currentName ? 'self' : 'other'}`;
+      const date = new Date(entry.timestamp);
+      const dateTimeString = `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
+      div.innerHTML = `<div><strong>${entry.name}</strong></div><p><small>${dateTimeString}</small></p><p>${entry.text}</p>`;
+      entries.appendChild(div);
+    }
+    async function cleanOldUsers() {
+      const namesRef = ref(database, 'names');
+      const snapshot = await get(namesRef);
+      if (!snapshot.exists()) return;
+
+      const data = snapshot.val();
+      const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      Object.keys(data).forEach(timestamp => {
+        if (data[timestamp].timestamp < oneWeekAgo) {
+          remove(ref(database, `names/${timestamp}`));
+        }
+      });
+    }
+    setInterval(cleanOldUsers, 60 * 60 * 1000);
+    cleanOldUsers();
+    function updateButtonState() {
+      if (textInput.value.trim()) {
+        submitButton.textContent = "送信";
+        submitButton.classList.remove('has-background-warning-light');
+        submitButton.classList.add('has-background-primary-light');
+      } else {
+        submitButton.textContent = "自由帳";
+        submitButton.classList.remove('has-background-primary-light');
+        submitButton.classList.add('has-background-warning-light');
+      }
+    }
+    textInput.addEventListener('input', updateButtonState);
+    window.addEventListener('load', updateButtonState);
+    setInterval(updateButtonState, 100);
+    submitButton.addEventListener('click', (e) => {
+      if (!textInput.value.trim()) {
+        e.preventDefault();
+        window.open(defaultUrl, '_blank');
+      }
+    });
+  </script>
+</body>
+
+</html>
